@@ -17,7 +17,6 @@
 package com.google.ai.edge.gallery.tools
 
 import android.content.Context
-import android.util.Log
 import com.google.ai.edge.gallery.intents.IntentAction
 import com.google.ai.edge.gallery.intents.IntentHandler
 import com.google.ai.edge.gallery.skills.SkillsProvider
@@ -25,8 +24,6 @@ import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-
-private const val TAG = "AGRunIntentTool"
 
 class RunIntentTool(private val context: Context, private val skillsProvider: SkillsProvider) :
   ToolDefinition {
@@ -47,10 +44,8 @@ class RunIntentTool(private val context: Context, private val skillsProvider: Sk
   ): Map<String, String> {
     return runBlocking(Dispatchers.Default) {
       if (IntentAction.from(intent) == null) {
-        Log.w(TAG, "Intent not found: '$intent'")
         return@runBlocking guardMissingEntityWithSkillFallback(name = intent, type = "Intent")
       }
-      Log.d(TAG, "Run intent. Intent: '$intent', parameters: '$parameters'")
       executionContext
         ?.actionChannel
         ?.send(
@@ -58,7 +53,6 @@ class RunIntentTool(private val context: Context, private val skillsProvider: Sk
             label = "Executing intent \"$intent\"",
             inProgress = true,
             addItemTitle = "Execute intent \"$intent\"",
-            addItemDescription = "Parameters: $parameters",
           )
         )
       val res =

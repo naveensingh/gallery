@@ -16,7 +16,6 @@
 
 package com.google.ai.edge.gallery.tools
 
-import android.util.Log
 import com.google.ai.edge.gallery.common.LOCAL_URL_BASE
 import com.google.ai.edge.gallery.data.DataStoreRepository
 import com.google.ai.edge.gallery.skills.SkillsProvider
@@ -28,8 +27,6 @@ import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-
-private const val TAG = "AGRunJsTool"
 
 fun getSkillSecretKey(skillName: String): String {
   return "skill___${skillName}"
@@ -57,12 +54,6 @@ class RunJsTool(
     data: String,
   ): Map<String, Any> {
     return runBlocking(Dispatchers.Default) {
-      Log.d(
-        TAG,
-        "runJS tool called with:" +
-          "\n- skillName: ${skillName}\n- scriptName: ${scriptName}\n- data: ${data}\n",
-      )
-
       val skill = skillsProvider.loadSkill(skillName)
 
       if (skill == null) {
@@ -101,9 +92,8 @@ class RunJsTool(
               key = getSkillSecretKey(skillName = skillName),
               value = secret,
             )
-            Log.d(TAG, "Got Secret from ask info dialog: ${secret.substring(0, 3)}")
           } else {
-            Log.d(TAG, "The ask info dialog got cancelled. No secret.")
+            // Secret not provided
           }
         } else {
           secret = savedSecret
@@ -116,7 +106,6 @@ class RunJsTool(
           ?: return@runBlocking mapOf(
             "result" to "JS Skill URL not set properly or skill not found"
           )
-      Log.d(TAG, "Calling JS script.\n- url: $url\n- data: $data")
 
       // Update progress.
       executionContext
@@ -126,7 +115,6 @@ class RunJsTool(
             label = "Calling JS script \"${skillName}/${scriptName}\"",
             inProgress = true,
             addItemTitle = "Call JS script: \"${skillName}/${scriptName}\"",
-            addItemDescription = "- URL: ${url.replace(LOCAL_URL_BASE, "")}\n- Data: $data",
             customData = skill,
           )
         )
@@ -160,16 +148,12 @@ class RunJsTool(
         val image = resultJson.image
         val webview = resultJson.webview
         if (image != null) {
-          Log.d(TAG, "Got an image response.")
           resultImageToShow = image
         }
         if (webview != null) {
-          Log.d(TAG, "Got an webview response.")
           val webviewUrl = skill.getJsSkillWebviewUrl(url = webview.url ?: "")
-          Log.d(TAG, "Webview url: $webviewUrl")
           resultWebviewToShow = webview.copy(url = webviewUrl)
         }
-        Log.d(TAG, "Result: ${resultJson.result}")
         mapOf("result" to (resultJson.result ?: ""), "status" to "succeeded")
       }
     }

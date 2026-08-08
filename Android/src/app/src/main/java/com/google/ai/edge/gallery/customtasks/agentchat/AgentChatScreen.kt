@@ -18,7 +18,6 @@ package com.google.ai.edge.gallery.customtasks.agentchat
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -118,7 +117,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
 
-private const val TAG = "AGAgentChatScreen"
 private val chatViewJavascriptInterface = ChatWebViewJavascriptInterface()
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -316,7 +314,6 @@ fun AgentChatScreen(
       val currentModel by androidx.compose.runtime.rememberUpdatedState(model)
       LaunchedEffect(actionChannel) {
         for (action in actionChannel) {
-          Log.d(TAG, "Handling action: $action")
           when (action) {
             is SkillProgressToolAction -> {
               viewModel.updateCollapsableProgressPanelMessage(
@@ -345,11 +342,6 @@ fun AgentChatScreen(
                 launch {
                   delay(60000L) // 60 seconds max
                   if (!action.result.isCompleted) {
-                    Log.e(TAG, "JS Execution timed out, completing with error.")
-                    Log.d(
-                      TAG,
-                      "Analytics: skill_execution, capability_name=${task.id}, skill_name=$skillName, success=false, error_type=timeout",
-                    )
                     firebaseAnalytics?.logEvent(
                       GalleryEvent.SKILL_EXECUTION.id,
                       Bundle().apply {
@@ -372,21 +364,14 @@ fun AgentChatScreen(
                     chatWebViewClient.setPageLoadListener(null)
                     continuation.resume(Unit)
                   }
-                  Log.d(TAG, "Loading url: ${action.url}")
                   webViewRef?.loadUrl(action.url)
                 }
 
                 // Execute JS.
-                Log.d(TAG, "Start to run js")
                 chatViewJavascriptInterface.onResultListener = { result ->
-                  Log.d(TAG, "Got result:\n$result")
                   action.result.complete(result)
                   val isSuccess = !result.contains("\"error\":")
                   val errorType = if (isSuccess) "" else "js_error"
-                  Log.d(
-                    TAG,
-                    "Analytics: skill_execution, capability_name=${task.id}, skill_name=$skillName, success=$isSuccess, error_type=$errorType",
-                  )
                   firebaseAnalytics?.logEvent(
                     GalleryEvent.SKILL_EXECUTION.id,
                     Bundle().apply {
@@ -423,10 +408,6 @@ fun AgentChatScreen(
                     .trimIndent()
                 webViewRef?.evaluateJavascript(script, null)
               } catch (e: Exception) {
-                Log.d(
-                  TAG,
-                  "Analytics: skill_execution, capability_name=${task.id}, skill_name=$skillName, success=false, error_type=exception",
-                )
                 firebaseAnalytics?.logEvent(
                   GalleryEvent.SKILL_EXECUTION.id,
                   Bundle().apply {
@@ -482,11 +463,6 @@ fun AgentChatScreen(
             viewModel.addLogMessageToLastCollapsableProgressPanel(
               model = model,
               logMessage = logMessage,
-            )
-            Log.d(
-              TAG,
-              "${curConsoleMessage.message()} " +
-                "-- From line ${curConsoleMessage.lineNumber()} of ${curConsoleMessage.sourceId()}",
             )
           }
         },
@@ -665,7 +641,6 @@ fun AgentChatScreen(
 
         // Reset session when selected skills changed.
         if (selectedSkillsChanged) {
-          Log.d(TAG, "Selected skill changed. Resetting conversation.")
           resetSessionWithCurrentSkillsAndMcps(
             viewModel,
             modelManagerViewModel,
@@ -685,7 +660,6 @@ fun AgentChatScreen(
       onDismiss = { selectMcpsAndToolsChanged ->
         showMcpManagerBottomSheet = false
         if (selectMcpsAndToolsChanged) {
-          Log.d(TAG, "Selected MCPs or tools changed. Resetting conversation.")
           resetSessionWithCurrentSkillsAndMcps(
             viewModel,
             modelManagerViewModel,
@@ -814,7 +788,6 @@ class ChatWebViewClient(val context: Context) : BaseGalleryWebViewClient(context
 
   override fun onPageFinished(view: WebView?, url: String?) {
     super.onPageFinished(view, url)
-    Log.d(TAG, "page loaded")
     onPageLoaded?.invoke()
   }
 }

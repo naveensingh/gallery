@@ -304,7 +304,6 @@ fun MainUi(
       // Convert command into json that can be consumed by the game.
       val commandJson =
         """[{"item": ${command.item}, "plot":[${command.plots.joinToString(",")}]}]"""
-      Log.d(TAG, "commandJson: $commandJson")
 
       // Call into the game webview.
       val jsScript = "tinyGarden.runCommands('$commandJson')"
@@ -329,7 +328,6 @@ fun MainUi(
           TinyGardenItem.SCYTHE.ordinal + 1 -> TinyGardenItem.SCYTHE.label
           else -> ""
         }
-      Log.d(TAG, "prevSeed: '$prevSeed', prevPlots: '$prevPlots', prevAction: '$prevAction'")
     }
   }
 
@@ -378,9 +376,7 @@ fun MainUi(
                 valueType = ValueType.INT,
               )
                 as Int
-            Log.d(TAG, "Target turn to reset: $numTurnsToReset")
             if (uiState.numTurns == numTurnsToReset) {
-              Log.d(TAG, "!! This is the turn to reset conversation")
               viewModel.resetConversation(
                 model = model,
                 tools = tools,
@@ -438,9 +434,7 @@ fun MainUi(
       }
 
       if (!same) {
-        Log.d(TAG, "model config values changed.")
         if (nonNumTurnsConfigChanged) {
-          Log.d(TAG, "need to reset engine")
           viewModel.resetEngine(
             context = context,
             model = model,
@@ -451,7 +445,6 @@ fun MainUi(
             },
           )
         } else {
-          Log.d(TAG, "need to reset conversation")
           viewModel.resetConversation(
             model = model,
             tools = tools,
@@ -530,11 +523,9 @@ fun MainUi(
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                       super.onPageFinished(view, url)
-                      Log.d(TAG, "webview finished loading")
 
                       // Show help on first launch.
                       if (!viewModel.dataStoreRepository.getHasRunTinyGarden()) {
-                        Log.d(TAG, "First time running Tiny Garden. Showing help screen...")
                         viewModel.dataStoreRepository.setHasRunTinyGarden(true)
                         scope.launch {
                           delay(1000)
@@ -580,10 +571,6 @@ fun MainUi(
                   object : WebChromeClient() {
                     // Log console messages.
                     override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                      Log.d(
-                        TAG,
-                        "${consoleMessage?.message()} -- From line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}",
-                      )
                       return super.onConsoleMessage(consoleMessage)
                     }
                   }
@@ -593,7 +580,6 @@ fun MainUi(
                 // http://appassets.androidplatform.net' is the recommended, reserved domain.
                 var url = "$ASSETS_BASE_URL/assets/tinygarden/index.html"
                 if (!viewModel.dataStoreRepository.getHasRunTinyGarden()) {
-                  Log.d(TAG, "First time running Tiny Garden. Showing tutorial screen...")
                   viewModel.dataStoreRepository.setHasRunTinyGarden(true)
                   url = "$url?tutorial=1"
                 }

@@ -108,7 +108,7 @@ constructor(
             McpServerState(mcpServer = updatedServerProto, client = client, error = null)
           } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.e(TAG, "Error loading MCP server: ${serverProto.url}", e)
+            Log.e(TAG, "Error loading MCP server", e)
             // Fallback: If connection fails during startup, load the server in a disabled state.
             McpServerState(
               mcpServer = serverProto.toBuilder().setEnabled(false).build(),
@@ -214,7 +214,6 @@ constructor(
           val filteredStates = currentState.mcpServers.filter { it.mcpServer.url != url }
           currentState.copy(mcpServers = filteredStates + newState, loadingMcpServer = false)
         }
-        Log.d(TAG, "Analytics: mcp_management, action=add_server, status=success")
         firebaseAnalytics?.logEvent(
           GalleryEvent.MCP_MANAGEMENT.id,
           Bundle().apply {
@@ -223,15 +222,11 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        Log.e(TAG, "Error adding MCP server: $url", e)
+        Log.e(TAG, "Error adding MCP server", e)
         // Fallback: Update the UI state with the error message without preserving the server.
         _uiState.update { currentState ->
           currentState.copy(error = e.message ?: "Failed to connect", loadingMcpServer = false)
         }
-        Log.d(
-          TAG,
-          "Analytics: mcp_management, action=add_server, status=failed, error_type=${e.javaClass.simpleName}",
-        )
         firebaseAnalytics?.logEvent(
           GalleryEvent.MCP_MANAGEMENT.id,
           Bundle().apply {
@@ -402,7 +397,6 @@ constructor(
     savedAlwaysAllowMap: Map<String, Boolean>? = null,
     mcpAuth: McpAuth? = null,
   ): Pair<Client, List<McpTool>> {
-    Log.d(TAG, "Initializing MCP for $url...")
     val client =
       Client(
         clientInfo =
@@ -446,7 +440,6 @@ constructor(
           .setAlwaysAllow(isAlwaysAllow)
           .build()
       }
-    Log.d(TAG, "Loaded ${mcpTools.size} tools from $url: ${mcpTools.joinToString { it.name }}")
     return Pair(client, mcpTools)
   }
 

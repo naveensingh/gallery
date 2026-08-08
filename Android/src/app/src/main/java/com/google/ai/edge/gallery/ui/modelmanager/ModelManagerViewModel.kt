@@ -57,7 +57,6 @@ import com.google.ai.edge.gallery.data.markInitializationFailed
 import com.google.ai.edge.gallery.data.markInitializationStarted
 import com.google.ai.edge.gallery.data.markInitialized
 import com.google.ai.edge.gallery.data.resetInitialization
-import com.google.ai.edge.gallery.firebaseAnalytics
 import com.google.ai.edge.gallery.huggingface.HuggingFaceApiClient
 import com.google.ai.edge.gallery.proto.AccessTokenData
 import com.google.ai.edge.gallery.proto.HfModelItemProto
@@ -90,9 +89,16 @@ private const val TAG = "AGModelManagerViewModel"
 private const val TEXT_INPUT_HISTORY_MAX_SIZE = 50
 private const val MODEL_ALLOWLIST_FILENAME = "model_allowlist.json"
 private const val MODEL_ALLOWLIST_TEST_FILENAME = "model_allowlist_test.json"
+// Public, static catalog of downloadable models (names, HF URLs, sizes, task types).
+// Fetching it is a plain unauthenticated GET with no user data attached -- it is what tells
+// the app which models exist, not analytics/telemetry. Actual model bytes still come straight
+// from Hugging Face, and chats/conversations never touch this or any other network call.
 private const val ALLOWLIST_BASE_URL =
   "https://raw.githubusercontent.com/google-ai-edge/gallery/refs/heads/main/model_allowlists"
-
+// A locally-built dev version can be ahead of the allowlist file published upstream for it
+// (e.g. running 1.0.18 before an "1_0_18.json" exists yet), so we walk backwards through a
+// bounded number of older patch versions rather than giving up on the first 404.
+private const val MAX_ALLOWLIST_VERSION_FALLBACKS = 20
 private const val TEST_MODEL_ALLOW_LIST = ""
 
 data class ModelInitializationStatus(
@@ -647,29 +653,6 @@ constructor(
     dataStoreRepository.saveTheme(theme = theme)
   }
 
-  /**
-   * Retrieves whether Firebase Analytics collection is currently enabled.
-   *
-   * @return `true` if enabled or not explicitly disabled in settings; `false` if disabled.
-   */
-  fun readFirebaseAnalytics(): Boolean {
-    return dataStoreRepository.readFirebaseAnalytics()
-  }
-
-  /**
-   * Updates the user preference for Firebase Analytics data collection right away.
-   *
-   * Persists the setting to on-disk DataStore
-   * (`dataStoreRepository.saveFirebaseAnalytics(enabled)`) and dynamically updates the live
-   * Firebase SDK state via `firebaseAnalytics?.setAnalyticsCollectionEnabled(enabled)`.
-   *
-   * @param enabled `true` to enable diagnostic/analytics gathering; `false` to disable.
-   */
-  fun saveFirebaseAnalytics(enabled: Boolean) {
-    dataStoreRepository.saveFirebaseAnalytics(enabled = enabled)
-    firebaseAnalytics?.setAnalyticsCollectionEnabled(enabled)
-  }
-
   fun getModelUrlResponse(model: Model, accessToken: String? = null): Int {
     try {
       if (model.url.isEmpty()) {
@@ -986,19 +969,21 @@ constructor(
         }
 
         if (modelAllowlist == null) {
-          // Load from github.
-          var version = BuildConfig.VERSION_NAME.replace(".", "_")
-          val url = getAllowlistUrl(version)
-          Log.d(TAG, "Loading model allowlist from internet. Url: $url")
-          val data = getJsonResponse<ModelAllowlist>(url = url)
+          // Fetch the current model catalog from GitHub. This is a static, public JSON file
+          // listing available models and their download URLs -- no user data is sent.
+          val data = fetchAllowlistFromInternet(BuildConfig.VERSION_NAME)
           modelAllowlist = data?.jsonObj
 
-          if (modelAllowlist == null) {
-            Log.w(TAG, "Failed to load model allowlist from internet. Trying to load it from disk")
-            modelAllowlist = readModelAllowlistFromDisk()
-          } else {
+          if (modelAllowlist != null) {
             Log.d(TAG, "Done: loading model allowlist from internet")
             saveModelAllowlistToDisk(modelAllowlistContent = data?.textContent ?: "{}")
+          } else {
+            Log.w(TAG, "Failed to load model allowlist from internet. Trying local assets.")
+            modelAllowlist = readModelAllowlistFromAssets()
+            if (modelAllowlist == null) {
+              Log.w(TAG, "Failed to load model allowlist from local assets. Falling back to local disk copy")
+              modelAllowlist = readModelAllowlistFromDisk()
+            }
           }
         }
 
@@ -1133,6 +1118,16 @@ constructor(
     lifecycleProvider.isAppInForeground = foreground
   }
 
+  private fun fetchAllowlistFromInternet(versionName: String) =
+    generateAllowlistVersionCandidates(versionName)
+      .asSequence()
+      .mapNotNull { candidateVersion ->
+        val url = getAllowlistUrl(candidateVersion.replace(".", "_"))
+        Log.d(TAG, "Loading model allowlist from internet. Url: $url")
+        getJsonResponse<ModelAllowlist>(url = url)
+      }
+      .firstOrNull()
+
   private fun saveModelAllowlistToDisk(modelAllowlistContent: String) {
     try {
       Log.d(TAG, "Saving model allowlist to disk...")
@@ -1144,8 +1139,21 @@ constructor(
     }
   }
 
+  private fun readModelAllowlistFromAssets(): ModelAllowlist? {
+    return try {
+      context.assets.open("model_allowlist.json").use { stream ->
+        val content = stream.bufferedReader().readText()
+        val gson = Gson()
+        gson.fromJson(content, ModelAllowlist::class.java)
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "failed to read model allowlist from assets", e)
+      null
+    }
+  }
+
   private fun readModelAllowlistFromDisk(
-    fileName: String = MODEL_ALLOWLIST_FILENAME
+    fileName: String = MODEL_ALLOWLIST_FILENAME,
   ): ModelAllowlist? {
     try {
       Log.d(TAG, "Reading model allowlist from disk: $fileName")
@@ -1569,4 +1577,25 @@ constructor(
 
 private fun getAllowlistUrl(version: String): String {
   return "$ALLOWLIST_BASE_URL/${version}.json"
+}
+
+/**
+ * Yields [versionName], then older patch versions ("1.0.18", "1.0.17", "1.0.16", ...), so a
+ * locally-built version ahead of the last published allowlist file still finds the newest one
+ * that actually exists.
+ */
+private fun generateAllowlistVersionCandidates(versionName: String): List<String> {
+  val parts = versionName.split(".").toMutableList()
+  val patchIndex = parts.lastIndex
+  var patch = parts.getOrNull(patchIndex)?.toIntOrNull() ?: return listOf(versionName)
+
+  val candidates = mutableListOf<String>()
+  var attempts = 0
+  while (patch >= 0 && attempts < MAX_ALLOWLIST_VERSION_FALLBACKS) {
+    parts[patchIndex] = patch.toString()
+    candidates.add(parts.joinToString("."))
+    patch--
+    attempts++
+  }
+  return candidates
 }

@@ -27,7 +27,6 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.net.Uri
-import android.util.Log
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -140,8 +139,6 @@ import java.io.FileInputStream
 import java.util.concurrent.Executors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-private const val TAG = "AGMessageInputText"
 
 /**
  * Composable function to display a text input field for composing chat messages.
@@ -291,7 +288,6 @@ fun MessageInputText(
     ) { result ->
       if (result.resultCode == android.app.Activity.RESULT_OK) {
         result.data?.data?.let { uri ->
-          Log.d(TAG, "Picked wav file: $uri")
           scope.launch(Dispatchers.IO) {
             handleAudioWavSelected(
               context = context,
@@ -307,7 +303,7 @@ fun MessageInputText(
           }
         }
       } else {
-        Log.d(TAG, "Wav picking cancelled.")
+        // Wav picking cancelled
       }
     }
 
@@ -859,8 +855,8 @@ fun MessageInputText(
                 imageCaptureUseCase,
               )
             cameraControl = camera.cameraControl
-          } catch (e: Exception) {
-            Log.d(TAG, "Failed to bind camera", e)
+          } catch (_: Exception) {
+            // Failed to bind camera
           }
         }
       }
@@ -937,8 +933,8 @@ fun MessageInputText(
                       } else bitmap
                     bitmap = resizeBitmap(originalBitmap = bitmap)
                     updatePickedImages(listOf(bitmap))
-                  } catch (e: Exception) {
-                    Log.e(TAG, "Failed to process image", e)
+                  } catch (_: Exception) {
+                    // Failed to process image
                   } finally {
                     image.close()
                     scope.launch {
@@ -1086,8 +1082,6 @@ private fun resizeBitmap(originalBitmap: Bitmap, size: Int = 1024): Bitmap {
     newHeight = size
     newWidth = (size * aspectRatio).toInt()
   }
-
-  Log.d(TAG, "Resizing image from $originalWidth x $originalHeight to $newWidth x $newHeight")
 
   // Create a new scaled bitmap using the calculated dimensions
   return originalBitmap.scale(newWidth, newHeight)

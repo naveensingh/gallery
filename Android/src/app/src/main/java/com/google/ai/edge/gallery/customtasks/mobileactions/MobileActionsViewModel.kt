@@ -137,7 +137,6 @@ constructor(@ApplicationContext private val appContext: Context) : ViewModel() {
     }
 
     viewModelScope.launch(Dispatchers.Default) {
-      Log.d(TAG, "Start processing user prompt: $userPrompt")
       setProcessing(processing = true)
       setShowWelcomeMessage(showWelcomeMessage = false)
 
@@ -150,9 +149,7 @@ constructor(@ApplicationContext private val appContext: Context) : ViewModel() {
       setUserPrompt(prompt = userPrompt)
 
       // Wait until the conversation is NOT resetting.
-      Log.d(TAG, "Waiting for any ongoing conversation reset to be done...")
       isResettingConversation.first { !it }
-      Log.d(TAG, "Done waiting. Start inference.")
 
       // Run inference.
       val instance = model.instance as LlmModelInstance
@@ -395,9 +392,8 @@ constructor(@ApplicationContext private val appContext: Context) : ViewModel() {
       val systemDefaultZone = ZoneId.systemDefault()
       val zonedDateTime = localDateTime.atZone(systemDefaultZone)
       ms = zonedDateTime.toInstant().toEpochMilli()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       // Ignore parsing error.
-      Log.w(TAG, "Failed to parse date time: '$datetime'", e)
     }
 
     val intent =

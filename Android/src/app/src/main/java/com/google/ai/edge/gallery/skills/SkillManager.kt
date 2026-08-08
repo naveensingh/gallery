@@ -20,7 +20,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.google.ai.edge.gallery.GalleryEvent
 import com.google.ai.edge.gallery.common.getJsonResponse
@@ -47,8 +46,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private const val TAG = "AGSkillManager"
 
 private const val SKILL_ALLOWLIST_URL = ""
 
@@ -92,33 +89,18 @@ constructor(
   override suspend fun loadSkills(defaultDisabledSkills: Set<String>) {
     if (!skillLoaded) {
       withContext(Dispatchers.IO) {
-        Log.d(TAG, "Loading skills index...")
-
         // 1. Load all skills from DataStore.
         val allDataStoreSkills = dataStoreRepository.getAllSkills()
         val dataStoreBuiltInSkills = allDataStoreSkills.filter { it.builtIn }
         val dataStoreCustomSkills = allDataStoreSkills.filter { !it.builtIn }
-        Log.d(
-          TAG,
-          "data store built-in skills:\n${dataStoreBuiltInSkills.joinToString(separator = "\n") { it.name }}",
-        )
-        Log.d(
-          TAG,
-          "data store custom skills:\n${dataStoreCustomSkills.joinToString(separator = "\n") { it.name }}",
-        )
 
         // 2. Keep track of the selection state of existing built-in skills.
         val builtInSelectionMap = dataStoreBuiltInSkills.associate {
           it.name to Pair(it.selected, it.userModifiedSelection)
         }
-        Log.d(TAG, "data store built-in skills selection map: $builtInSelectionMap")
 
         // 3. Read and parse SKILL.md files from assets/skills directories.
         val builtInSkills = loadBuiltInSkills(context, builtInSelectionMap, defaultDisabledSkills)
-        Log.d(
-          TAG,
-          "Final built-in skills:\n${builtInSkills.joinToString(separator = "\n") { "${it.name}(${it.selected})" }}",
-        )
 
         // 4. Combine the updated built-in skills with the existing custom skills.
         val finalSkills = builtInSkills.toMutableList()
@@ -151,13 +133,11 @@ constructor(
         emptyList()
       } else {
         val url = SKILL_ALLOWLIST_URL
-        Log.d(TAG, "Fetching skill allowlist from: $url")
         val result =
           getJsonResponse<SkillAllowlist>(url)
-            ?: throw IOException("Failed to fetch or parse JSON from $url")
+            ?: throw IOException("Failed to fetch or parse JSON")
 
         val allowlist = result.jsonObj
-        Log.d(TAG, "Successfully loaded ${allowlist.featuredSkills.size} featured skills.")
         allowlist.featuredSkills
       }
     }
@@ -176,8 +156,6 @@ constructor(
     featuredSkills: List<AllowedSkill> = emptyList(),
   ): Skill {
     return withContext(Dispatchers.IO) {
-      Log.d(TAG, "Validating skill from URL: $url")
-
       // 1. Normalize the URL: remove trailing "/SKILL.md" or "/".
       var normalizedUrl = url
       if (normalizedUrl.endsWith("/SKILL.md")) {
@@ -187,7 +165,6 @@ constructor(
         normalizedUrl = normalizedUrl.dropLast(1)
       }
       val skillMdUrl = "$normalizedUrl/SKILL.md"
-      Log.d(TAG, "Fetching SKILL.md from: $skillMdUrl")
 
       // 2. Read url/SKILL.md.
       val mdContent =
@@ -195,12 +172,11 @@ constructor(
           val connection = URL(skillMdUrl).openConnection()
           InputStreamReader(connection.getInputStream()).use { reader -> reader.readText() }
         } catch (e: Exception) {
-          Log.e(TAG, "Error fetching SKILL.md from $skillMdUrl", e)
-          throw IOException("Failed to fetch SKILL.md: ${e.message}", e)
+          throw IOException("Failed to fetch SKILL.md", e)
         }
 
       if (mdContent.isEmpty()) {
-        throw IllegalArgumentException("SKILL.md is empty at $skillMdUrl")
+        throw IllegalArgumentException("SKILL.md is empty")
       }
 
       // 3. If it exists, read and convert it to proto.
@@ -210,7 +186,7 @@ constructor(
       // 4. If conversion failed, report error.
       if (errors.isNotEmpty()) {
         throw IllegalArgumentException(
-          "Error parsing SKILL.md from $skillMdUrl: ${errors.joinToString(", ")}"
+          "Error parsing SKILL.md: ${errors.joinToString(", ")}"
         )
       }
 
@@ -219,12 +195,11 @@ constructor(
 
       // 5. Check if the name already exists. If so, report error.
       if (_skills.value.any { curSkill -> curSkill.name == skill.name }) {
-        throw IllegalArgumentException("A skill with the name '${skill.name}' already exists.")
+        throw IllegalArgumentException("A skill with the name already exists.")
       }
 
       // 6. Add to state and data store.
       addSkill(skill = skill, addToDataStore = true, featuredSkills = featuredSkills)
-      Log.d(TAG, "Successfully added skill from URL: ${skill.name}")
       skill
     }
   }
@@ -247,13 +222,10 @@ constructor(
    * [directoryUri]'s SKILL.md file already exists.
    */
   fun checkBuiltInSkillExistedForImportedSkill(directoryUri: Uri): Boolean {
-    Log.d(TAG, "Checking built-in skill existed for imported skill: $directoryUri")
-
     val rootFile = DocumentFile.fromTreeUri(context, directoryUri)
     val skillMdFile = rootFile?.findFile("SKILL.md")
 
     if (skillMdFile == null || !skillMdFile.exists()) {
-      Log.w(TAG, "SKILL.md not found in the selected directory for built-in check.")
       return false
     }
 
@@ -263,19 +235,16 @@ constructor(
           inputStream.bufferedReader().use { it.readText() }
         }
       } catch (e: Exception) {
-        Log.e(TAG, "Error reading SKILL.md for built-in check", e)
         return false
       } ?: ""
 
     if (mdContent.isEmpty()) {
-      Log.w(TAG, "SKILL.md is empty for built-in check.")
       return false
     }
 
     val (skillProto, errors) = convertSkillMdToProto(mdContent, builtIn = false, selected = false)
 
     if (errors.isNotEmpty() || skillProto == null) {
-      Log.w(TAG, "Error parsing SKILL.md for built-in check: ${errors.joinToString(", ")}")
       return false
     }
 
@@ -295,8 +264,6 @@ constructor(
     featuredSkills: List<AllowedSkill> = emptyList(),
   ): Skill {
     return withContext(Dispatchers.IO) {
-      Log.d(TAG, "Validating skill from directory URI: $directoryUri")
-
       // Get the DocumentFile representing the selected directory
       val rootFile = DocumentFile.fromTreeUri(context, directoryUri)
 
@@ -314,8 +281,7 @@ constructor(
             inputStream.bufferedReader().use { it.readText() }
           }
         } catch (e: Exception) {
-          Log.e(TAG, "Error reading SKILL.md", e)
-          throw IOException("Failed to read SKILL.md: ${e.message}", e)
+          throw IOException("Failed to read SKILL.md", e)
         } ?: ""
 
       val (skillProto, errors) = convertSkillMdToProto(mdContent, builtIn = false, selected = true)
@@ -334,7 +300,6 @@ constructor(
 
       // Create the destination directory.
       if (destDir.exists()) {
-        Log.d(TAG, "Destination directory already exists, deleting: ${destDir.path}")
         deleteSkill(name = parsedSkill.name, featuredSkills = featuredSkills)
       }
       if (!destDir.exists()) {
@@ -343,12 +308,11 @@ constructor(
 
       // Check if the skill already exists.
       if (_skills.value.any { curSkill -> curSkill.name == parsedSkill.name }) {
-        throw Exception("A skill with the name '${parsedSkill.name}' already exists.")
+        throw Exception("A skill with this name already exists.")
       }
 
       val sourceDocumentFile = DocumentFile.fromTreeUri(context, directoryUri)
       if (sourceDocumentFile == null) {
-        Log.e(TAG, "Failed to get DocumentFile from URI: $directoryUri")
         throw Exception("Failed to access the selected directory.")
       }
 
@@ -362,13 +326,11 @@ constructor(
           }
         } else if (source.isFile) {
           try {
-            Log.d(TAG, "Copying file ${source.name} to ${dest.path}")
             context.contentResolver.openInputStream(source.uri)?.use { inputStream ->
               dest.outputStream().use { outputStream -> inputStream.copyTo(outputStream) }
             }
           } catch (e: Exception) {
-            Log.e(TAG, "Error copying file ${source.name} to ${dest.path}", e)
-            // Log error but don't block the whole process for now.
+            // Error copying file
           }
         }
       }
@@ -379,7 +341,6 @@ constructor(
       // Update the skill proto with the new import directory name.
       val skillWithDir = parsedSkill.toBuilder().setImportDirName(newImportDirName).build()
       addSkill(skill = skillWithDir, addToDataStore = true, featuredSkills = featuredSkills)
-      Log.d(TAG, "Successfully added skill from local import: ${skillWithDir.name}")
       skillWithDir
     }
   }
@@ -396,8 +357,6 @@ constructor(
     addToDataStore: Boolean,
     featuredSkills: List<AllowedSkill> = emptyList(),
   ) {
-    Log.d(TAG, "Adding skill: $skill")
-
     // Update state.
     _skills.update { currentSkills ->
       if (skill.builtIn) {
@@ -436,10 +395,6 @@ constructor(
     val skill = _skills.value.firstOrNull { it.name == name } ?: return
 
     val loggingParams = getSkillLoggingParams(skill, featuredSkills)
-    Log.d(
-      TAG,
-      "Analytics: skill_management, action=${SkillAction.DELETE.value}, params=$loggingParams",
-    )
     firebaseAnalytics?.logEvent(
       GalleryEvent.SKILL_MANAGEMENT.id,
       loggingParams.apply { putString("action", SkillAction.DELETE.value) },
@@ -455,7 +410,7 @@ constructor(
           val skillDir = context.filesDir.resolve(skill.importDirName)
           skillDir.deleteRecursively()
         } catch (e: Exception) {
-          Log.w(TAG, "Failed to delete skill directory: ${skill.importDirName}", e)
+          // Failed to delete skill directory
         }
       }
 
@@ -478,10 +433,6 @@ constructor(
 
     for (skill in skillsToDelete) {
       val loggingParams = getSkillLoggingParams(skill, featuredSkills)
-      Log.d(
-        TAG,
-        "Analytics: skill_management, action=${SkillAction.DELETE.value}, params=$loggingParams",
-      )
       firebaseAnalytics?.logEvent(
         GalleryEvent.SKILL_MANAGEMENT.id,
         loggingParams.apply { putString("action", SkillAction.DELETE.value) },
@@ -499,7 +450,7 @@ constructor(
             val skillDir = context.filesDir.resolve(skill.importDirName)
             skillDir.deleteRecursively()
           } catch (e: Exception) {
-            Log.w(TAG, "Failed to delete skill directory: ${skill.importDirName}", e)
+            // Failed to delete skill directory
           }
         }
       }
@@ -556,10 +507,6 @@ constructor(
       currentSkills.map { skill -> skill.toBuilder().setSelected(selected).build() }
     }
 
-    Log.d(
-      TAG,
-      "Analytics: skill_management, action=${if (selected) SkillAction.ENABLE_ALL.value else SkillAction.DISABLE_ALL.value}",
-    )
     firebaseAnalytics?.logEvent(
       GalleryEvent.SKILL_MANAGEMENT.id,
       Bundle().apply {
@@ -618,17 +565,13 @@ constructor(
     featuredSkills: List<AllowedSkill> = emptyList(),
   ): Skill {
     return withContext(Dispatchers.IO) {
-      Log.d(TAG, "saveSkillEdit: $name")
-
       val currentSkills = _skills.value
       val isNewSkill = index < 0 || index >= currentSkills.size
 
       if (isNewSkill) {
-        Log.d(TAG, "Saving new skill: $name")
-
         // Check for name conflict
         if (currentSkills.any { it.name == name }) {
-          throw IllegalArgumentException("A skill with the name '${name}' already exists.")
+          throw IllegalArgumentException("A skill with this name already exists.")
         }
 
         val normalizedName = name.replace("\\s+".toRegex(), "-")
@@ -636,10 +579,6 @@ constructor(
         val scriptDestDir = File(skillDestDir, "scripts")
         // If the directory exists from a previous failed attempt, clear it.
         if (skillDestDir.exists()) {
-          Log.w(
-            TAG,
-            "Skill destination directory already exists for new skill: ${skillDestDir.path}, deleting.",
-          )
           skillDestDir.deleteRecursively()
         }
 
@@ -668,8 +607,6 @@ constructor(
         addSkill(newSkill, addToDataStore = true, featuredSkills = featuredSkills)
         newSkill
       } else {
-        Log.d(TAG, "Saving skill edit: $name")
-
         // Editing existing skill
         val existingSkill = currentSkills[index]
         val oldName = existingSkill.name
@@ -685,26 +622,22 @@ constructor(
         var updatedImportDirName = existingSkill.importDirName
 
         if (oldName != normalizedNewName) {
-          Log.d(TAG, "Renaming skill from $oldName to $normalizedNewName")
-
           // Check for name conflict with the new name
           if (currentSkills.any { it.name == normalizedNewName }) {
             throw IllegalArgumentException(
-              "A skill with the name '${normalizedNewName}' already exists."
+              "A skill with the name already exists."
             )
           }
 
           val oldSkillDestDir = context.filesDir.resolve(existingSkill.importDirName)
           if (oldSkillDestDir.exists()) {
-            Log.d(TAG, "Renaming directory from ${oldSkillDestDir.path} to ${newSkillDestDir.path}")
             if (!oldSkillDestDir.renameTo(newSkillDestDir)) {
               throw IOException(
-                "Failed to rename skill directory from ${oldSkillDestDir.name} to ${newSkillDestDir.name}."
+                "Failed to rename skill directory."
               )
             }
             updatedImportDirName = newSkillDestDir.relativeTo(context.filesDir).path
           } else {
-            Log.w(TAG, "Old skill directory not found: ${oldSkillDestDir.path}")
             // If the old directory doesn't exist, create the new one.
             newSkillDestDir.mkdirs()
           }
@@ -744,7 +677,6 @@ constructor(
   suspend fun loadSkillScriptsContent(skill: Skill): Map<String, String> {
     return withContext(Dispatchers.IO) {
       if (skill.importDirName.isEmpty()) {
-        Log.d(TAG, "Skill ${skill.name} has no import directory, returning empty scripts.")
         return@withContext emptyMap()
       }
 
@@ -752,7 +684,6 @@ constructor(
       val scriptDir = File(skillDir, "scripts")
 
       if (!scriptDir.exists() || !scriptDir.isDirectory) {
-        Log.w(TAG, "Script directory not found for skill ${skill.name}: ${scriptDir.path}")
         return@withContext emptyMap()
       }
 
@@ -762,9 +693,7 @@ constructor(
           try {
             val content = file.readText()
             scriptsContent[file.name] = content
-            Log.d(TAG, "Loaded script ${file.name} for skill ${skill.name}")
           } catch (e: Exception) {
-            Log.e(TAG, "Error reading script file ${file.name} for skill ${skill.name}", e)
             scriptsContent[file.name] = "" // Use empty string on error
           }
         }
@@ -776,7 +705,6 @@ constructor(
   /** Deletes a specific script file associated with a locally imported skill. */
   fun deleteSkillScript(skill: Skill, scriptName: String) {
     if (skill.importDirName.isEmpty()) {
-      Log.d(TAG, "Skill ${skill.name} is not locally imported, cannot delete script.")
       return
     }
 
@@ -787,16 +715,10 @@ constructor(
 
       if (scriptFile.exists()) {
         try {
-          if (scriptFile.delete()) {
-            Log.d(TAG, "Successfully deleted script: ${scriptFile.path}")
-          } else {
-            Log.w(TAG, "Failed to delete script: ${scriptFile.path}")
-          }
+          scriptFile.delete()
         } catch (e: Exception) {
-          Log.e(TAG, "Error deleting script ${scriptFile.path}", e)
+          // Error deleting script
         }
-      } else {
-        Log.d(TAG, "Script file not found, ignoring delete: ${scriptFile.path}")
       }
     }
   }
@@ -888,7 +810,6 @@ constructor(
     description: String,
     instructions: String,
   ) {
-    Log.d(TAG, "Writing skill.md: ${skillMdFile.path}")
     val mdContent =
       """
     ---
@@ -914,12 +835,10 @@ constructor(
 
     for ((scriptName, content) in scriptsContent) {
       val scriptFile = File(scriptDestDir, scriptName)
-      Log.d(TAG, "Saving script: ${scriptFile.path}")
       try {
         scriptFile.writeText(content)
-        Log.d(TAG, "Saved script: ${scriptFile.path}")
       } catch (e: Exception) {
-        Log.e(TAG, "Error saving script ${scriptName} to ${scriptFile.path}", e)
+        // Error saving script
       }
     }
   }
@@ -1063,7 +982,7 @@ constructor(
                   importDir = "assets/skills/$dirName",
                 )
               if (errors.isNotEmpty()) {
-                Log.w(TAG, "Error parsing asset skill $dirName: ${errors.joinToString(", ")}")
+                // Error parsing asset skill
               } else {
                 skillProto?.let {
                   // Apply the previous selection state if the user explicitly modified it,
@@ -1079,16 +998,15 @@ constructor(
                       .setUserModifiedSelection(userModified)
                       .build()
                   )
-                  Log.d(TAG, "Added built-in skill: ${it.name}")
                 }
               }
             }
           } catch (e: Exception) {
-            Log.w(TAG, "SKILL.md not found or error reading for asset skill $dirName", e)
+            // SKILL.md not found or error reading
           }
         }
       } catch (e: Exception) {
-        Log.e(TAG, "Error listing assets/skills", e)
+        // Error listing assets/skills
       }
       return builtInSkills
     }

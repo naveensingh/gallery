@@ -126,7 +126,6 @@ constructor(@IoDispatcher private val ioDispatcher: CoroutineDispatcher) {
 
   private fun executeGetRequest(urlString: String, accessToken: String? = null): String? {
     return try {
-      Log.d(TAG, "Executing HF HTTP GET request: $urlString")
       val connection = URL(urlString).openConnection() as HttpURLConnection
       connection.requestMethod = "GET"
       connection.setRequestProperty("User-Agent", USER_AGENT)
@@ -139,11 +138,11 @@ constructor(@IoDispatcher private val ioDispatcher: CoroutineDispatcher) {
       if (responseCode == HttpURLConnection.HTTP_OK) {
         connection.inputStream.bufferedReader().use { it.readText() }
       } else {
-        Log.e(TAG, "HF API returned HTTP $responseCode for URL: $urlString")
+        Log.e(TAG, "HF API returned HTTP $responseCode")
         null
       }
     } catch (e: Exception) {
-      Log.e(TAG, "Failed HTTP GET request to HF API for URL: $urlString", e)
+      Log.e(TAG, "Failed HTTP GET request to HF API", e)
       null
     }
   }

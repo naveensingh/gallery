@@ -15,19 +15,14 @@
  */
 package com.google.ai.edge.gallery.customtasks.mobileactions
 
-import android.util.Log
 import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
 import com.google.ai.edge.litertlm.ToolSet
-
-private const val TAG = "AGMATools"
 
 class MobileActionsTools(val onFunctionCalled: (Action) -> Unit) : ToolSet {
   /** Turns on flashlight. */
   @Tool(description = "Turns the flashlight on")
   fun turnOnFlashlight(): Map<String, String> {
-    Log.d(TAG, "turn on flashlight")
-
     // Call the callback with the recognized action.
     onFunctionCalled(FlashlightOnAction())
 
@@ -38,8 +33,6 @@ class MobileActionsTools(val onFunctionCalled: (Action) -> Unit) : ToolSet {
   /** Turns off flashlight. */
   @Tool(description = "Turns the flashlight off")
   fun turnOffFlashlight(): Map<String, String> {
-    Log.d(TAG, "turn off flashlight")
-
     // Call the callback with the recognized action.
     onFunctionCalled(FlashlightOffAction())
 
@@ -55,11 +48,6 @@ class MobileActionsTools(val onFunctionCalled: (Action) -> Unit) : ToolSet {
     @ToolParam(description = "The phone number of the contact.") phoneNumber: String,
     @ToolParam(description = "The email address of the contact.") email: String,
   ): Map<String, String> {
-    Log.d(
-      TAG,
-      "create contact. First name: '$firstName', last name: '$lastName', phone number: '$phoneNumber', email: '$email'",
-    )
-
     onFunctionCalled(
       CreateContactAction(
         firstName = firstName,
@@ -85,8 +73,6 @@ class MobileActionsTools(val onFunctionCalled: (Action) -> Unit) : ToolSet {
     @ToolParam(description = "The subject of the email.") subject: String,
     @ToolParam(description = "The body of the email.") body: String,
   ): Map<String, String> {
-    Log.d(TAG, "send email. To: '$to', subject: '$subject', body: '$body'")
-
     onFunctionCalled(SendEmailAction(to = to, subject = subject, body = body))
 
     return mapOf("result" to "success", "to" to to, "subject" to subject, "body" to body)
@@ -101,8 +87,6 @@ class MobileActionsTools(val onFunctionCalled: (Action) -> Unit) : ToolSet {
     )
     location: String
   ): Map<String, String> {
-    Log.d(TAG, "Show location on map. Location: '$location'")
-
     onFunctionCalled(ShowLocationOnMap(location = location))
 
     return mapOf("result" to "success", "location" to location)
@@ -111,8 +95,6 @@ class MobileActionsTools(val onFunctionCalled: (Action) -> Unit) : ToolSet {
   /** Opens wifi settings. */
   @Tool(description = "Opens the WiFi settings.")
   fun openWifiSettings(): Map<String, String> {
-    Log.d(TAG, "Open wifi settings")
-
     onFunctionCalled(OpenWifiSettingsAction())
 
     return mapOf("result" to "success")
@@ -125,8 +107,6 @@ class MobileActionsTools(val onFunctionCalled: (Action) -> Unit) : ToolSet {
     datetime: String,
     @ToolParam(description = "The title of the event.") title: String,
   ): Map<String, String> {
-    Log.d(TAG, "Create calendar event. Datetime: '$datetime', title: '$title'")
-
     onFunctionCalled(CreateCalendarEventAction(datetime = datetime, title = title))
 
     return mapOf("result" to "success", "datetime" to datetime, "title" to title)

@@ -15,12 +15,9 @@
  */
 package com.google.ai.edge.gallery.customtasks.tinygarden
 
-import android.util.Log
 import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
 import com.google.ai.edge.litertlm.ToolSet
-
-private const val TAG = "AGTGTools"
 
 /** The items that can be used in the Tiny Garden game. */
 enum class TinyGardenItem(val label: String) {
@@ -53,8 +50,6 @@ class TinyGardenTools(val onFunctionCalled: (command: TinyGardenCommand) -> Unit
   fun waterPlots(
     @ToolParam(description = "The IDs of the plots to water.") plots: List<Int>
   ): Map<String, Any> {
-    Log.d(TAG, "waterPlots. Plots=$plots")
-
     onFunctionCalled(
       TinyGardenCommand(item = TinyGardenItem.WATERING_CAN.ordinal + 1, plots = plots)
     )
@@ -69,8 +64,6 @@ class TinyGardenTools(val onFunctionCalled: (command: TinyGardenCommand) -> Unit
     @ToolParam(description = "The name of the seed to plant.") seed: String,
     @ToolParam(description = "The IDs of the plots to plant a seed in.") plots: List<Int>,
   ): Map<String, Any> {
-    Log.d(TAG, "plantSeed. seed: $seed, plots; $plots")
-
     val itemId =
       when (seed.lowercase()) {
         "sunflower" -> TinyGardenItem.SUNFLOWER.ordinal
@@ -94,8 +87,6 @@ class TinyGardenTools(val onFunctionCalled: (command: TinyGardenCommand) -> Unit
   fun harvestPlots(
     @ToolParam(description = "The IDs of the plots to harvest.") plots: List<Int>
   ): Map<String, Any> {
-    Log.d(TAG, "harvestPlots. Plots=$plots")
-
     onFunctionCalled(TinyGardenCommand(item = TinyGardenItem.SCYTHE.ordinal + 1, plots = plots))
 
     // Return a response object to the model confirming the action.

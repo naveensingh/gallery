@@ -16,24 +16,14 @@
 
 package com.google.ai.edge.gallery
 
-import android.util.Log
-import com.google.firebase.Firebase
-import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.analytics.analytics
+import android.os.Bundle
 
-private var hasLoggedAnalyticsWarning = false
+interface GalleryAnalytics {
+  fun logEvent(name: String, params: Bundle? = null)
+  fun setAnalyticsCollectionEnabled(enabled: Boolean)
+}
 
-val firebaseAnalytics: FirebaseAnalytics?
-  get() =
-    runCatching { Firebase.analytics }
-      .onFailure { exception ->
-        // Firebase.analytics can throw an exception if goolgle-services is not set up, e.g.,
-        // missing google-services.json.
-        if (!hasLoggedAnalyticsWarning) {
-          Log.w("AGAnalyticsFirebase", "Firebase Analytics is not available", exception)
-        }
-      }
-      .getOrNull()
+val firebaseAnalytics: GalleryAnalytics? = null
 
 enum class GalleryEvent(val id: String) {
   CAPABILITY_SELECT(id = "capability_select"),

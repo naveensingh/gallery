@@ -16,15 +16,12 @@
 
 package com.google.ai.edge.gallery.tools
 
-import android.util.Log
 import com.google.ai.edge.gallery.skills.SkillsProvider
 import com.google.ai.edge.gallery.skills.getSkillContent
 import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-
-private const val TAG = "AGLoadSkillTool"
 
 class LoadSkillTool(private val skillsProvider: SkillsProvider) : ToolDefinition {
   override val alwaysAllow: Boolean = true
@@ -38,7 +35,6 @@ class LoadSkillTool(private val skillsProvider: SkillsProvider) : ToolDefinition
     return runBlocking(Dispatchers.Default) {
       val skill = skillsProvider.loadSkill(skillName)
       val skillContent = skill?.getSkillContent() ?: "Skill not found"
-      Log.d(TAG, "load skill. Skill content:\n$skillContent")
       if (skill != null) {
         executionContext
           ?.actionChannel

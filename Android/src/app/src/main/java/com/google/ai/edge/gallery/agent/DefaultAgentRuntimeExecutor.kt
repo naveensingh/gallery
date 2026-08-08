@@ -88,7 +88,7 @@ open class DefaultAgentRuntimeExecutor(
   }
 
   private fun ProducerScope<AgentEvent>.emitEvent(event: AgentEvent) {
-    trySend(event).onFailure { Log.w(TAG, "Failed to emit event: $event", it) }
+    trySend(event).onFailure { Log.w(TAG, "Failed to emit event", it) }
   }
 
   override fun executeStream(
@@ -194,7 +194,6 @@ open class DefaultAgentRuntimeExecutor(
 
   override fun interrupt() {
     val curModel = activeSession.get()?.model ?: return
-    Log.d(TAG, "Interrupting session for model: ${curModel.name}")
     // TODO: we need to reset the conversation in executeStream if user sends a new request.
     curModel.runtimeHelper.stopResponse(curModel)
   }
@@ -230,16 +229,11 @@ open class DefaultAgentRuntimeExecutor(
         if (attempt == maxRetries) {
           Log.e(
             TAG,
-            "Failed to reset session for model: ${curModel.name} after $maxRetries attempts.",
+            "Failed to reset session after $maxRetries attempts.",
             e,
           )
           return
         }
-        Log.d(
-          TAG,
-          "Failed to reset session for model: ${curModel.name} (attempt $attempt/$maxRetries). Retrying...",
-          e,
-        )
         delay(retryDelayMs)
       }
     }

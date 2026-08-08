@@ -92,19 +92,15 @@ constructor(
 
     // Count turn.
     incrementNumTurns()
-    Log.d(TAG, "Turn #: ${uiState.value.numTurns}")
 
     // Add user prompt to history.
     this.addMessage(message = ChatMessageText(content = instructionText, side = ChatSide.USER))
 
     viewModelScope.launch(Dispatchers.Default) {
-      Log.d(TAG, "Start processing user instruction: '$instructionText'")
       setProcessing(processing = true)
 
       // Wait until the conversation is NOT resetting.
-      Log.d(TAG, "Waiting for any ongoing conversation reset to be done...")
       isResettingConversation.first { !it }
-      Log.d(TAG, "Done waiting. Start inference.")
 
       val instance = model.instance as LlmModelInstance
       val conversation = instance.conversation
@@ -116,7 +112,6 @@ constructor(
       try {
         val responseMessage = conversation.sendMessage(Contents.of(contents))
         val response = responseMessage.toString()
-        Log.d(TAG, "Done processing user instruction. Response: $response")
         onDone(response)
       } catch (e: Exception) {
         Log.e(TAG, "Failed to run inference", e)
@@ -208,7 +203,6 @@ constructor(
           prevPlots = prevPlots,
           prevAction = prevAction,
         )
-      Log.d(TAG, "Current system prompt:\n$curSystemPrompt")
       LlmChatModelHelper.resetConversation(
         model = model,
         supportImage = false,

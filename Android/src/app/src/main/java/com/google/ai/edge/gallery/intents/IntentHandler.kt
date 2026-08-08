@@ -126,11 +126,11 @@ object IntentHandler {
             context.startActivity(intent)
             "succeeded"
           } else {
-            Log.e(TAG, "Failed to parse send_email parameters: $parameters")
+            Log.e(TAG, "Failed to parse send_email parameters")
             "failed"
           }
         } catch (e: Exception) {
-          Log.e(TAG, "Failed to parse send_email parameters: $parameters", e)
+          Log.e(TAG, "Failed to parse send_email parameters", e)
           "failed"
         }
       }
@@ -146,11 +146,11 @@ object IntentHandler {
             context.startActivity(intent)
             "succeeded"
           } else {
-            Log.e(TAG, "Failed to parse send_sms parameters: $parameters")
+            Log.e(TAG, "Failed to parse send_sms parameters")
             "failed"
           }
         } catch (e: Exception) {
-          Log.e(TAG, "Failed to parse send_sms parameters: $parameters", e)
+          Log.e(TAG, "Failed to parse send_sms parameters", e)
           "failed"
         }
       }
@@ -174,11 +174,11 @@ object IntentHandler {
             context.startActivity(intent)
             "succeeded"
           } else {
-            Log.e(TAG, "Failed to parse create_calendar_event parameters: $parameters")
+            Log.e(TAG, "Failed to parse create_calendar_event parameters")
             "failed"
           }
         } catch (e: Exception) {
-          Log.e(TAG, "Failed to parse create_calendar_event parameters: $parameters", e)
+          Log.e(TAG, "Failed to parse create_calendar_event parameters", e)
           "failed"
         }
       }
@@ -187,12 +187,7 @@ object IntentHandler {
       }
       IntentAction.GET_CURRENT_DATE_AND_TIME -> {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss EEEE", Locale.getDefault())
-        val currentDateAndTime = sdf.format(Date())
-        Log.d(
-          TAG,
-          "get_current_date_and_time via handleAction. Current date and time: $currentDateAndTime",
-        )
-        currentDateAndTime
+        sdf.format(Date())
       }
       IntentAction.SCHEDULE_NOTIFICATION -> {
         scheduleNotification(context, parameters)
@@ -282,15 +277,15 @@ object IntentHandler {
           val responseAdapter = moshi.adapter(ReadCalendarEventsResponse::class.java)
           return responseAdapter.toJson(ReadCalendarEventsResponse(eventsList))
         } else {
-          Log.e(TAG, "Failed to parse read_calendar_events date: ${params.date}")
+          Log.e(TAG, "Failed to parse read_calendar_events date")
           return "failed"
         }
       } else {
-        Log.e(TAG, "Failed to parse read_calendar_events parameters: $parameters")
+        Log.e(TAG, "Failed to parse read_calendar_events parameters")
         return "failed"
       }
     } catch (e: Exception) {
-      Log.e(TAG, "Failed to read calendar events: $parameters", e)
+      Log.e(TAG, "Failed to read calendar events", e)
       return "failed: ${e.message}"
     }
   }
@@ -320,7 +315,6 @@ object IntentHandler {
               .appendQueryParameter("query", params.message)
               .build()
               .toString()
-          Log.d(TAG, "Setting constructed deeplink to: $uri")
           notificationProtoBuilder.setDeeplink(uri)
         } else if (params.task_id != null) {
           val uri =
@@ -330,7 +324,6 @@ object IntentHandler {
               .appendQueryParameter("query", params.message)
               .build()
               .toString()
-          Log.d(TAG, "Setting constructed deeplink to: $uri")
           notificationProtoBuilder.setDeeplink(uri)
         } else {
           val fallbackUri =
@@ -340,7 +333,6 @@ object IntentHandler {
               .appendQueryParameter("query", params.message)
               .build()
               .toString()
-          Log.d(TAG, "Setting fallback deeplink to: $fallbackUri")
           notificationProtoBuilder.setDeeplink(fallbackUri)
         }
         if (params.year != null) {
@@ -370,11 +362,11 @@ object IntentHandler {
         }
         return "succeeded"
       } else {
-        Log.e(TAG, "Failed to parse schedule_notification parameters: $parameters")
+        Log.e(TAG, "Failed to parse schedule_notification parameters")
         return "failed"
       }
     } catch (e: Exception) {
-      Log.e(TAG, "Failed to parse schedule_notification parameters: $parameters", e)
+      Log.e(TAG, "Failed to parse schedule_notification parameters", e)
       return "failed"
     }
   }

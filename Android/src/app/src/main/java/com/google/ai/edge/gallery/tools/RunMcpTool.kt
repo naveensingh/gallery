@@ -50,7 +50,6 @@ class RunMcpTool(
     @ToolParam(description = "The name of the tool to run.") toolName: String,
     @ToolParam(description = "The parameters passed to tool as input") input: String,
   ): Map<String, String> {
-    Log.d(TAG, "Run MCP tool:\n- name: $toolName\n- input: $input")
     return runBlocking(Dispatchers.IO) {
       val serverState =
         mcpServersProvider.mcpServers.find { serverState ->
@@ -100,7 +99,6 @@ class RunMcpTool(
               label = "Calling MCP tool \"$toolName\"",
               inProgress = true,
               addItemTitle = "Call MCP tool: \"$toolName\"",
-              addItemDescription = "- Input: $input",
             )
           )
         val result =
@@ -114,7 +112,6 @@ class RunMcpTool(
         )
 
         if (result == null) {
-          Log.d(TAG, "Tool execution returned null result")
           executionContext
             ?.actionChannel
             ?.send(
@@ -130,14 +127,12 @@ class RunMcpTool(
         if (result.isError == true) {
           val errorText =
             result.content.filterIsInstance<TextContent>().joinToString("\n") { it.text ?: "" }
-          Log.e(TAG, "MCP tool \"$toolName\" failed: $errorText")
           executionContext
             ?.actionChannel
             ?.send(
               SkillProgressToolAction(
                 label = "Failed to call MCP tool \"$toolName\"",
                 addItemTitle = "Call MCP tool \"$toolName\" failed",
-                addItemDescription = errorText,
                 inProgress = false,
               )
             )
@@ -146,7 +141,6 @@ class RunMcpTool(
         } else {
           val successText =
             result.content.filterIsInstance<TextContent>().joinToString("\n") { it.text ?: "" }
-          Log.d(TAG, "MCP tool \"$toolName\" succeeded:\n$successText")
           executionContext
             ?.actionChannel
             ?.send(
@@ -154,7 +148,6 @@ class RunMcpTool(
                 label = "Succeeded calling MCP tool \"$toolName\"",
                 inProgress = true,
                 addItemTitle = "Call MCP tool \"$toolName\" succeeded",
-                addItemDescription = successText,
               )
             )
           logMcpExecution(success = true, errorType = "")
@@ -194,10 +187,6 @@ class RunMcpTool(
   }
 
   private fun logMcpExecution(success: Boolean, errorType: String) {
-    Log.d(
-      TAG,
-      "Analytics: mcp_execution, capability_name=$taskId, success=$success, error_type=$errorType",
-    )
     firebaseAnalytics?.logEvent(
       GalleryEvent.MCP_EXECUTION.id,
       Bundle().apply {

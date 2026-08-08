@@ -17,7 +17,6 @@
 package com.google.ai.edge.gallery.ui.common.chat
 
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.ui.graphics.ImageBitmap
@@ -27,8 +26,6 @@ import com.google.ai.edge.gallery.common.Classification
 import com.google.ai.edge.gallery.data.Model
 import com.google.ai.edge.gallery.data.PromptTemplate
 import com.google.ai.edge.litertlm.Message
-
-private const val TAG = "AGChatMessage"
 
 enum class ChatMessageType {
   INFO,
@@ -209,7 +206,6 @@ class ChatMessageAudioClip(
     val channels = 1 // Mono
     val bitsPerSample: Short = 16
     val byteRate = sampleRate * channels * bitsPerSample / 8
-    Log.d(TAG, "Wav metadata: sampleRate: $sampleRate")
 
     // RIFF/WAVE header
     header[0] = 'R'.code.toByte()

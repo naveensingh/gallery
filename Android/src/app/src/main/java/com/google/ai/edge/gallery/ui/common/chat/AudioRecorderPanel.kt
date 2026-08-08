@@ -21,7 +21,6 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,8 +70,6 @@ import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-
-private const val TAG = "AGAudioRecorderPanel"
 
 private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
 private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
@@ -229,7 +226,6 @@ private suspend fun startRecording(
   onAmplitudeChanged: (Int) -> Unit,
   onMaxDurationReached: () -> Unit,
 ) {
-  Log.d(TAG, "Start recording...")
   val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
 
   audioRecordState.value?.release()
@@ -273,8 +269,6 @@ private fun stopRecording(
   audioRecordState: MutableState<AudioRecord?>,
   audioStream: ByteArrayOutputStream,
 ): ByteArray {
-  Log.d(TAG, "Stopping recording...")
-
   val recorder = audioRecordState.value
   if (recorder?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
     recorder.stop()
@@ -284,7 +278,6 @@ private fun stopRecording(
 
   val recordedBytes = audioStream.toByteArray()
   audioStream.reset()
-  Log.d(TAG, "Stopped. Recorded ${recordedBytes.size} bytes.")
 
   return recordedBytes
 }
